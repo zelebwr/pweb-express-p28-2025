@@ -1,0 +1,15 @@
+addReviewers: true
+addAssignees: author
+
+reviewers:
+  - zelebwr
+  - HikariReiziq
+  - oooryzaaa
+
+numberOfReviewers: 2
+
+# You can use skipKeywords to prevent the action from running on PRs
+# with certain words in the title, like work-in-progress drafts.
+# skipKeywords:
+#   - wip
+#   - draft
