@@ -5,11 +5,11 @@ import { Router } from 'express';
 import genreRouter from './genre.routes';
 import transactionRouter from './transaction.routes';
 
-const router = Router(); 
+const router: Router = Router(); 
 
 // router.use('/auth', authRoute);
 // router.use('/books', bookRouter);
-router.use('/genres', genreRouter);
+router.use('/genre', genreRouter);
 router.use('/transactions', transactionRouter);
 
 export default router;
