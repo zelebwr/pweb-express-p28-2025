@@ -15,7 +15,7 @@ app.get('/', (req: Request, res: Response) => {
     res.json({ message: 'Welcome to the Express.js Application!' });
 });
 
-app.use('/api', mainRouter);
+app.use('/', mainRouter);
 
 const startServer = async () => {
     try {
