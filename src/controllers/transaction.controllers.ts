@@ -92,3 +92,28 @@ export const createTransaction = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'An unknown error occurred during transaction creation' });
     }
 };
+
+/**
+ * * Handls HTTP request to get transaction statistics. 
+ * @author zelebwr
+ * @param req Express Request object.
+ * @param res Express Response object to send statistics data or error.
+ */
+export const getTransactionStatistics = async (req: Request, res: Response) => {
+    try {
+        const stats = await transactionService.getTransactionStatistics();
+        return res.status(200).json(stats);
+    } catch (error) {
+        if (error instanceof Error) {
+            return res.status(500).json({
+                message: "Internal server error while fetching statistics",
+                error: error.message,
+            });
+        }
+        return res
+            .status(500)
+            .json({
+                message: "An unknown error occurred while fetching statistics",
+            });
+    }
+};

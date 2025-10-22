@@ -15,6 +15,25 @@ app.get('/', (req: Request, res: Response) => {
     res.json({ message: 'Welcome to the Express.js Application!' });
 });
 
+app.get('/health-check', (req: Request, res: Response) => {
+    try{
+        const currentDate = new Date(); 
+        const formattedDate = currentDate.toDateString(); 
+
+        res.status(200).json({
+            success: true, 
+            message: 'Server is healthy',
+            date: formattedDate,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Server is unhealthy',
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+
 app.use('/api', mainRouter);
 
 const startServer = async () => {
