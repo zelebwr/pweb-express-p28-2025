@@ -1,5 +1,6 @@
 import prisma from '../config/prisma';
 import { Book } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 // Tipe data untuk input saat membuat buku baru
 type CreateBookInput = Omit<Book, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
@@ -77,6 +78,65 @@ export const getBooksByGenreId = async (genreId: string, page: number, limit: nu
 
     const totalBooks = await prisma.book.count({
         where: { genreId: genreId, deletedAt: null }
+    });
+
+    return { books, total: totalBooks };
+};
+
+/**
+ * Menghapus buku (soft delete) dengan mengisi kolom 'deletedAt'.
+ * @param bookId ID dari buku yang akan dihapus.
+ */
+export const deleteBookById = async (bookId: string) => {
+    return await prisma.book.update({
+        where: { id: bookId },
+        data: {
+            deletedAt: new Date(),
+        },
+    });
+};
+
+/**
+ * Mengambil semua buku dengan filter dan pagination.
+ * @param query Parameter query dari request (page, limit, search, orderByTitle).
+ */
+export const getAllBooks = async (query: any) => {
+    const { page = 1, limit = 10, search, orderByTitle } = query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    // --- PERBAIKAN FINAL ---
+    // Kita definisikan tipe datanya secara eksplisit
+    const whereCondition: Prisma.BookWhereInput = {
+        deletedAt: null, 
+    };
+
+    // Jika ada parameter 'search', tambahkan kondisi 'title' ke objek
+    if (search) {
+        whereCondition.title = {
+            contains: search,
+            mode: 'insensitive',
+        };
+    }
+    // --- AKHIR PERBAIKAN ---
+
+    const orderByCondition = {
+        ...(orderByTitle && {
+            title: orderByTitle as 'asc' | 'desc',
+        }),
+    };
+
+    const books = await prisma.book.findMany({
+        where: whereCondition,
+        skip: skip,
+        take: Number(limit),
+        orderBy: orderByCondition,
+        include: {
+            genre: { select: { name: true } }
+        }
+    });
+
+    const totalBooks = await prisma.book.count({
+        where: whereCondition
     });
 
     return { books, total: totalBooks };
