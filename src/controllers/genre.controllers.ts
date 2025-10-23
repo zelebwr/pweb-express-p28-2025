@@ -15,18 +15,27 @@ export const getGenreDetail = async (req: Request, res: Response) => {
         const genre = await genreService.getGenreById(genre_id);
 
         if (!genre) {
-            return res.status(404).json({ message: "Genre not found" });
-        }
-
-        res.status(200).json(genre);
-    } catch (error) {
-        if (error instanceof Error) {
-            return res.status(500).json({ 
-                message: 'Internal server error',
-                error: error.message,
+            return res.status(404).json({
+                success: false,
+                message: "Genre not found",
             });
         }
-        return res.status(500).json({ message: "An unknown error occurred" });
+
+        res.status(200).json({
+            success: true,
+            message: "Get genre detail successfully",
+            data: genre,
+        });
+    } catch (error) {
+        const errorMessage =
+            error instanceof Error
+                ? error.message
+                : "An unknown error occurred";
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: errorMessage,
+        });
     }
 };
 
@@ -42,32 +51,39 @@ export const updateGenre = async (req: Request, res: Response) => {
         const { name } = req.body;
 
         if (!name) {
-            return res.status(400).json({ message: "Genre name is required" });
+            return res.status(400).json({
+                success: false,
+                message: "Genre name is required",
+            });
         }
 
         const updatedGenre = await genreService.updateGenreById(genre_id, name);
-        return res.status(200).json(updatedGenre);
+        return res.status(200).json({
+            success: true,
+            message: "Genre updated successfully",
+            data: updatedGenre,
+        });
     } catch (error) {
+        let statusCode = 500;
+        let message = "Internal server error";
+        const errorMessage =
+            error instanceof Error ? error.message : "Unknown error occurred";
+
         if (error instanceof Error) {
-            if (error instanceof Prisma.PrismaClientKnownRequestError) {
-                if (error.code === 'P2002') { // Unique constraint failed
-                    return res.status(409).json({ message: 'A genre with this name already exists.' });
-                }
-                if (error.code === 'P2025') { // Record to update not found
-                    return res.status(404).json({ message: 'Genre not found' });
-                }
+            if (error.message.includes("already exists")) {
+                statusCode = 409;
+                message = error.message;
+            } else if (error.message.includes("Genre not found")) {
+                statusCode = 404;
+                message = error.message;
             }
-            // Handle generic errors from the service (like "already exists")
-            if (error.message.includes('already exists')) {
-                 return res.status(409).json({ message: error.message });
-            }
-            // Handle other general errors
-            return res.status(500).json({
-                message: 'Internal server error',
-                error: error.message,
-            });
         }
-        return res.status(500).json({ message: "An unknown error occurred" });
+
+        return res.status(statusCode).json({
+            success: false,
+            message: message,
+            error: errorMessage,
+        });
     }
 };
 
@@ -81,29 +97,29 @@ export const deleteGenre = async (req: Request, res: Response) => {
     try {
         const { genre_id } = req.params;
         await genreService.deleteGenreById(genre_id);
-        return res.status(200).json({ message: 'Genre deleted successfully' });
+        return res.status(200).json({
+            success: true,
+            message: "Genre removed successfully",
+        });
     } catch (error) {
+        let statusCode = 500;
+        let message = "Internal server error";
+        const errorMessage =
+            error instanceof Error ? error.message : "Unknown error occurred";
         if (error instanceof Error) {
-            if (error instanceof Prisma.PrismaClientKnownRequestError) {
-                if (error.code === 'P2025') { // Record to delete not found
-                    return res.status(404).json({ message: 'Genre not found' });
-                }
-                if (error.code === 'P2003') { // Foreign key constraint failed
-                    return res.status(409).json({ message: 'Cannot delete genre as it is referenced by other records.' });
-                }
-                if (error.code === 'P2014') { // Constraint violation
-                    return res.status(409).json({ message: 'Cannot delete genre as it is referenced by other records.' });
-                }
-                return res.status(500).json({
-                    message: 'Internal server error',
-                    error: error.message,
-                });
+            if (error.message.includes("Genre not found")) {
+                statusCode = 404;
+                message = error.message;
+            } else if (error.message.includes("Cannot delete genre")) {
+                statusCode = 400;
+                message = error.message;
             }
-            return res.status(500).json({
-                message: 'An unknown error occurred',
-                error: error.message,
-            });
         }
-        return res.status(500).json({ message: "An unknown error occurred" });
+        
+        return res.status(statusCode).json({
+            success: false,
+            message: message,
+            error: errorMessage,
+        });
     }
 };

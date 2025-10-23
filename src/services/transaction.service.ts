@@ -168,23 +168,16 @@ export const createTransaction = async (userId: string, books: BookOrderItem[]) 
                 },
             },
             include: {
-                user: { 
-                    select: {
-                        id: true,
-                        email: true,
-                        username: true,
-                    }
-                },
                 books: {
                     select: {
                         quantity: true,
-                        book: {
-                            select: {
-                                id: true,
-                                title: true,
-                                price: true,
-                            }
-                        }
+                        // book: {
+                        //     select: {
+                        //         id: true,
+                        //         title: true,
+                        //         price: true,
+                        //     }
+                        // }
                     }
                 }
             },
