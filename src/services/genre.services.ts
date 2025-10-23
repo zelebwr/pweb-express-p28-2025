@@ -85,10 +85,10 @@ export const deleteGenreById = async (id: string) => {
     }
 };
 
+// == KODE BARU YANG KITA TAMBAHKAN ==
 /**
  * Membuat genre baru di database.
  * @author HikariReiziq (diadaptasi dari Gemini)
- * @param name Nama genre yang akan dibuat.
  */
 export const createGenre = async (name: string) => {
     return await prisma.genre.create({

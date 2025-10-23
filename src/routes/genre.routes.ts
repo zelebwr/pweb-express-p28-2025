@@ -1,36 +1,22 @@
 import { Router } from 'express';
-// Impor SEMUA controller, baik yang lama maupun yang baru
 import * as genreController from '../controllers/genre.controllers';
 import { authMiddleware } from '../middlewares/auth.middleware';
 
-const router: Router = Router(); 
+const router: Router = Router();
 
-// == RUTE BARU YANG KITA TAMBAHKAN ==
-// POST /api/genre -> Membuat genre baru (dilindungi)
+// Rute untuk membuat genre baru (POST /api/genre)
 router.post('/', authMiddleware, genreController.handleCreateGenre);
 
-// GET /api/genre -> Mendapatkan semua genre (publik)
+// Rute untuk mendapatkan semua genre (GET /api/genre)
 router.get('/', genreController.handleGetAllGenres);
-// ===================================
 
-
-// == RUTE LAMA DARI TEMANMU (TETAP ADA) ==
-/** * * Route to get genre details by ID.
- * @author zelebwr
- */
+// Rute dari teman Anda untuk mendapatkan detail genre
 router.get('/:genre_id', genreController.getGenreDetail);
 
-/**
- * * Route to update genre details by ID.
- * @author zelebwr
- */
+// Rute dari teman Anda untuk mengupdate genre
 router.patch('/:genre_id', authMiddleware, genreController.updateGenre);
 
-/**
- * * Route to delete a genre by ID.
- * @author zelebwr
- */
+// Rute dari teman Anda untuk menghapus genre
 router.delete('/:genre_id', authMiddleware, genreController.deleteGenre);
-// =========================================
 
 export default router;

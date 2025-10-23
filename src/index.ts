@@ -34,7 +34,7 @@ app.get('/health-check', (req: Request, res: Response) => {
     }
 });
 
-app.use('/api', mainRouter);
+app.use('/', mainRouter);
 
 const startServer = async () => {
     try {
