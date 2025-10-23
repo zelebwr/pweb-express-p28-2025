@@ -107,3 +107,49 @@ export const deleteGenre = async (req: Request, res: Response) => {
         return res.status(500).json({ message: "An unknown error occurred" });
     }
 };
+
+
+/**
+ * Handler untuk membuat genre baru (POST /genre).
+ * @author HikariReiziq (diadaptasi dari Gemini)
+ */
+
+export const handleCreateGenre = async (req: Request, res: Response) => {
+    try {
+        // ... kode try ...
+    } catch (error: any) { // <-- UBAH DI SINI
+        if (error.code === 'P2002') {
+            return res.status(409).json({ success: false, message: 'Genre with this name already exists' });
+        }
+        console.error('CREATE GENRE ERROR:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+/**
+ * Handler untuk mendapatkan semua genre (GET /genre).
+ * @author HikariReiziq (diadaptasi dari Gemini)
+ */
+export const handleGetAllGenres = async (req: Request, res: Response) => {
+    try {
+        // Panggil service yang baru kita buat
+        const result = await genreService.getAllGenres(req.query);
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10;
+
+        res.status(200).json({
+            success: true,
+            message: 'Get all genres successfully',
+            data: result.genres,
+            meta: {
+                page,
+                limit,
+                total: result.total,
+                next_page: result.total > page * limit ? page + 1 : null,
+                prev_page: page > 1 ? page - 1 : null,
+            },
+        });
+    } catch (error) {
+        console.error('GET ALL GENRES ERROR:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};

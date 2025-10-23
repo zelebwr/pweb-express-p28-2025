@@ -1,6 +1,8 @@
+// src/controllers/book.controller.ts
 import { Request, Response } from 'express';
 import * as bookService from '../services/book.service';
-
+// Pastikan path ini benar
+import { AuthRequest } from '../middlewares/auth.middleware';
 /**
  * Handler untuk membuat buku baru (POST /books)
  */

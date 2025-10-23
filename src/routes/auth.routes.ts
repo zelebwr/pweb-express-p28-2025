@@ -1,5 +1,7 @@
+// src/routes/auth.routes.ts
 import { Router } from 'express';
 import * as authController from '../controllers/auth.controller';
+// Pastikan path ini benar
 import { authMiddleware } from '../middlewares/auth.middleware';
 
 const router = Router();
