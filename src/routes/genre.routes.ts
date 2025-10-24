@@ -1,29 +1,22 @@
 import { Router } from 'express';
 import * as genreController from '../controllers/genre.controllers';
+import { authMiddleware } from '../middlewares/auth.middleware';
 
-const router: Router = Router(); 
+const router: Router = Router();
 
-/** 
- * * Route to get genre details by ID.
- * @author zelebwr
- * @param genre_id The UUID of the genre to retrieve.
- * Returns genre details in JSON format or 404 if not found.
- */
+// Rute untuk membuat genre baru (POST /api/genre)
+router.post('/', authMiddleware, genreController.handleCreateGenre);
+
+// Rute untuk mendapatkan semua genre (GET /api/genre)
+router.get('/', genreController.handleGetAllGenres);
+
+// Rute dari teman Anda untuk mendapatkan detail genre
 router.get('/:genre_id', genreController.getGenreDetail);
 
-/**
- * * Route to update genre details by ID.
- * @author zelebwr
- * @param genre_id The UUID of the genre to update.
- * @param name The new name for the genre.
- */
-router.patch('/:genre_id', genreController.updateGenre);
+// Rute dari teman Anda untuk mengupdate genre
+router.patch('/:genre_id', authMiddleware, genreController.updateGenre);
 
-/**
- * * Route to delete a genre by ID.
- * @author zelebwr
- * @param genre_id The UUID of the genre to delete.
- */
-router.delete('/:genre_id', genreController.deleteGenre);
+// Rute dari teman Anda untuk menghapus genre
+router.delete('/:genre_id', authMiddleware, genreController.deleteGenre);
 
 export default router;

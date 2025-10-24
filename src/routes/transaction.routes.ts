@@ -1,7 +1,15 @@
 import { Router } from 'express';
 import * as transactionController from '../controllers/transaction.controllers';
-const router: Router = Router();
+import { authMiddleware } from '../middlewares/auth.middleware';
 
+const router: Router = Router();
+router.use(authMiddleware);
+
+/**
+ * * Route to get a list of all transactions.
+ * @author zelebwr
+ */
+router.get('/statistics', transactionController.getTransactionStatistics);
 /**
  * * Route to get a list of all transactions.
  * @author zelebwr

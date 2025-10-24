@@ -84,3 +84,55 @@ export const deleteGenreById = async (id: string) => {
         throw new Error('Database error while deleting genre.');
     }
 };
+
+// == KODE BARU YANG KITA TAMBAHKAN ==
+/**
+ * Membuat genre baru di database.
+ * @author HikariReiziq (diadaptasi dari Gemini)
+ */
+export const createGenre = async (name: string) => {
+    return await prisma.genre.create({
+        data: {
+            name,
+        },
+    });
+};
+
+/**
+ * Mengambil semua genre dengan filter dan pagination.
+ * @author HikariReiziq (diadaptasi dari Gemini)
+ */
+export const getAllGenres = async (query: any) => {
+    const { page = 1, limit = 10, search, orderByName } = query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const whereCondition: Prisma.GenreWhereInput = {
+        deletedAt: null,
+    };
+
+    if (search) {
+        whereCondition.name = {
+            contains: search,
+            mode: 'insensitive',
+        };
+    }
+
+    const orderByCondition: Prisma.GenreOrderByWithRelationInput[] = [];
+
+    if (orderByName) {
+        orderByCondition.push({ name: orderByName as 'asc' | 'desc' });
+    }
+
+    const genres = await prisma.genre.findMany({
+        where: whereCondition,
+        skip: skip,
+        take: Number(limit),
+        orderBy: orderByCondition,
+    });
+
+    const totalGenres = await prisma.genre.count({
+        where: whereCondition,
+    });
+
+    return { genres, total: totalGenres };
+};
