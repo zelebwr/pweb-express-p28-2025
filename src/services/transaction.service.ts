@@ -44,6 +44,11 @@ export const getAllTransactions = async () => {
         return transactions;
     } catch (error) {
         console.error('Error retrieving all transactions:', error);
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            if (error.code === 'P2025') {
+                throw new Error('No transactions found');
+            }
+        }
         throw new Error('Database error while retrieving transactions.');
     }
 };

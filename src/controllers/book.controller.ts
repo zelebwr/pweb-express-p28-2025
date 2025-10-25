@@ -11,13 +11,20 @@ export const handleCreateBook = async (req: Request, res: Response) => {
         // --- PENAMBAHAN VALIDASI ---
         const { title, writer, publisher, publicationYear, price, stockQuantity, genreId } = req.body;
         if (!title || !writer || !publisher || !publicationYear || price === undefined || stockQuantity === undefined || !genreId) {
-            return res.status(400).json({ success: false, message: 'Missing required fields: title, writer, publisher, publicationYear, price, stockQuantity, genreId are all required.' });
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Missing required fields: title, writer, publisher, publicationYear, price, stockQuantity, genreId are all required.' 
+            });
         }
         // --- AKHIR PENAMBAHAN ---
 
         const newBook = await bookService.createBook(req.body);
-        res.status(201).json({ success: true, message: 'Book added successfully', data: newBook });
-    } catch (error: any) {
+        res.status(201).json({ 
+            success: true, 
+            message: 'Book added successfully', 
+            data: newBook 
+        });
+    } catch (error) {
         if (error.code === 'P2002') {
             return res.status(409).json({ success: false, message: 'Book with this title already exists' });
         }

@@ -85,21 +85,31 @@ export const deleteGenreById = async (id: string) => {
     }
 };
 
-// == KODE BARU YANG KITA TAMBAHKAN ==
 /**
- * Membuat genre baru di database.
+ * * Membuat genre baru di database.
  * @author HikariReiziq (diadaptasi dari Gemini)
  */
 export const createGenre = async (name: string) => {
-    return await prisma.genre.create({
-        data: {
-            name,
-        },
-    });
+    try {
+        const newGenre = await prisma.genre.create({
+            data: {
+                name,
+            },
+        });
+        return newGenre;
+    } catch (error) {
+        console.error('Error creating genre:', error);
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            if (error.code === 'P2002') {
+                throw new Error('Genre with this name already exists.');
+            }
+        }
+        throw new Error('Database error while creating genre.');
+    }
 };
 
 /**
- * Mengambil semua genre dengan filter dan pagination.
+ * * Mengambil semua genre dengan filter dan pagination.
  * @author HikariReiziq (diadaptasi dari Gemini)
  */
 export const getAllGenres = async (query: any) => {
