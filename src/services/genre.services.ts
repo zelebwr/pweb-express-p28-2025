@@ -103,7 +103,7 @@ export const deleteGenreById = async (id: string) => {
             // }
             if (error.code === 'P2023') {
                 throw new Error('Invalid genre ID format.');
-            }
+            }2
         }
 
         throw new Error('Database error while deleting genre.');
