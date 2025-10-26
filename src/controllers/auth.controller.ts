@@ -22,16 +22,20 @@ const isValiEmail = (email: string): string | null => {
     let validCharsBetweenAtAndDot = false;
     let validCharactersAfterDot = false;
 
-    if (atIndex > 0) {
+    if (atIndex >= 0) {
         hasAtSgn = true;
-        validCharsBeforeAt = true; // Simplified check
+    }
+    if (atIndex > 0) {
+        validCharsBeforeAt = true;
+    }
+    if (lastDotIndex >= 0 && lastDotIndex > atIndex) {
+        hasDot = true;
     }
     if (lastDotIndex > atIndex + 1) {
-        hasDot = true;
-        validCharsBetweenAtAndDot = true; // Simplified check
+        validCharsBetweenAtAndDot = true;
     }
     if (lastDotIndex < email.length - 1) {
-        validCharactersAfterDot = true; // Simplified check
+        validCharactersAfterDot = true;
     }
 
     if (!hasAtSgn) return "Email must contain '@' symbol and it cannot be the first character.";
