@@ -15,6 +15,13 @@ export const getAllTransactions = async (req: Request, res: Response) => {
             success: true,
             message: "Get all transactions successfully",
             data: result.transactions,
+            meta: {
+                page: page, 
+                limit: limit, 
+                total: result.total,
+                next_page: result.total > page * limit ? page + 1 : null,
+                prev_page: page > 1 ? page - 1 : null,
+            },
         });
     } catch (error: unknown) {
         console.error(`[ERROR] Failed to get all transactions: ${error}`);
