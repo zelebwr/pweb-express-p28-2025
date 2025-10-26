@@ -4,7 +4,7 @@ import * as authController from '../controllers/auth.controller';
 // Pastikan path ini benar
 import { authMiddleware } from '../middlewares/auth.middleware';
 
-const router = Router();
+const router: Router = Router();
 
 // Rute publik untuk registrasi
 router.post('/register', authController.handleRegister);
