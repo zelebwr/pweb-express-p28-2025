@@ -13,6 +13,23 @@ export const handleRegister = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, message: 'Email and password are required' });
         }
 
+        if (password.length < 6) {
+            return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
+        }
+
+        if (email .indexOf('.') === -1 && email .indexOf('@') === -1) {
+            return res.status(400).json({ success: false, message: 'Invalid email format (.) and (@)' });
+        }
+
+        if (email .indexOf('@') === -1) {
+            return res.status(400).json({ success: false, message: 'Invalid email format (@)' });
+        }
+
+        
+        if (email .indexOf('.') === -1) {
+            return res.status(400).json({ success: false, message: 'Invalid email format (.)' });
+        }
+
         const newUser = await authService.register(req.body);
         res.status(201).json({
             success: true,
