@@ -12,12 +12,45 @@ type BookOrderItem = {
  * @return An array of transaction objects.
  * @description List of all transactions, including user information and details about the boks in each transaction.
  */
-export const getAllTransactions = async () => {
+export const getAllTransactions = async (query: any) => {
     try {
+        const {
+            page = 1,
+            limit = 10,
+            search,
+            orderById,
+            orderByAmount,
+            orderByPrice,
+        } = query;
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const whereCondition: Prisma.TransactionWhereInput = {};
+        if (search) {
+            whereCondition.id = {
+                contains: search,
+                mode: 'insensitive',
+            };
+        }
+
+        const orderBy: Prisma.TransactionOrderByWithRelationInput[] = [];
+        if (orderById) {
+            orderBy.push({ id: orderById as 'asc' | 'desc' });
+        }
+        if (orderByAmount) {
+            orderBy.push({ totalAmount: orderByAmount as 'asc' | 'desc' });
+        }
+        if (orderByPrice) {
+            orderBy.push({ totalPrice: orderByPrice as 'asc' | 'desc' });
+        }
+        if (orderBy.length === 0) {
+            orderBy.push({ createdAt: 'desc' });
+        }
+
         const transactions = await prisma.transaction.findMany({
-            orderBy: {
-                createdAt: 'desc',
-            },
+            where: whereCondition,
+            skip: skip,
+            take: Number(limit),
+            orderBy: orderBy,
             include: {
                 // User details, excluding password
                 user: {
@@ -41,15 +74,18 @@ export const getAllTransactions = async () => {
                 },
             },
         });
-        return transactions;
+
+        const totalTransactions = await prisma.transaction.count({
+            where: whereCondition,
+        });
+
+        return {
+            transactions,
+            total: totalTransactions,
+        };
     } catch (error) {
-        console.error('Error retrieving all transactions:', error);
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === 'P2025') {
-                throw new Error('No transactions found');
-            }
-        }
-        throw new Error('Database error while retrieving transactions.');
+        console.error("Error retrieving all transactions:", error);
+        throw new Error("Database error while retrieving transactions.");
     }
 };
 
@@ -89,12 +125,27 @@ export const getTransactionById = async (id: string) => {
                 },
             },
         });
+
+        if (!transaction) {
+            throw new Error('Transaction not found');
+        }
+
         return transaction;
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error retrieving transaction by ID:', error);
+
+        if (error instanceof Error) {
+            if (error.message === 'Transaction not found') {
+                throw error; // Rethrow to be handled by caller
+            }
+        }
+
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
             if (error.code === 'P2025') {
-                throw new Error('Transaction not found');
+                throw new Error('Transaction not found'); // ID Valid, but doesn't exit. 
+            }
+            if (error.code === 'P2023') {
+                throw new Error('Invalid transaction ID format'); // ID not valid.
             }
         } 
         throw new Error('Database error while retrieving transaction by ID.');
@@ -119,85 +170,102 @@ export const createTransaction = async (userId: string, books: BookOrderItem[]) 
         }
     }
 
-    // Prisma's interactive transaction
-    return prisma.$transaction(async (tx) => {
-        const user = await tx.user.findUnique({ where: { id: userId } });
-        if (!user) {
-            throw new Error('User not found');
-        }
-        const bookIds = books.map(item => item.bookId);
-        const booksInDb = await tx.book.findMany({
-            where: {
-                id: { in: bookIds },
-                deletedAt: null,
-            },
-        });
-
-        if (booksInDb.length !== bookIds.length) {
-            const foundIds = booksInDb.map(book => book.id);
-            const missingIds = bookIds.filter(id => !foundIds.includes(id));
-            throw new Error(`Book(s) not found: ${missingIds.join(', ')}`);
-        }
-        
-        let totalAmount = 0;
-        const update: Promise<any>[] = []; 
-
-        for (const item of books) {
-            const book = booksInDb.find(book => book.id === item.bookId)!;
-            if (!book) {
-                throw new Error(`Book not found: ${item.bookId}`);
+    try {
+        // Prisma's interactive transaction
+        return await prisma.$transaction(async (tx) => {
+            const user = await tx.user.findUnique({ where: { id: userId } });
+            if (!user) {
+                throw new Error('Invalid User ID: User not found');
             }
-            if (book.stockQuantity < item.quantity) {
-                throw new Error(`Insufficient stock for book: ${book.title}. Available: ${book.stockQuantity}, Requested: ${item.quantity}`);
+            
+            const bookIds = books.map(item => item.bookId);
+            const booksInDb = await tx.book.findMany({
+                where: {
+                    id: { in: bookIds },
+                    deletedAt: null,
+                },
+            });
+
+            if (booksInDb.length !== bookIds.length) {
+                const foundIds = booksInDb.map(book => book.id);
+                const missingIds = bookIds.filter(id => !foundIds.includes(id));
+                throw new Error(`Book(s) not found: ${missingIds.join(', ')}`);
             }
-            totalAmount += book.price * item.quantity;
+            
+            let totalPrice = 0;
+            let totalQuantity = 0;
+            const update: Promise<any>[] = []; 
 
-            // Update stock quantity
-            update.push(
-                tx.book.update({
-                    where: { id: book.id },
-                    data: { stockQuantity: { decrement: item.quantity }},
-                })
-            );
-        }
-
-        const newTransaction = await tx.transaction.create({
-            data: {
-                userId: userId,
-                total: totalAmount,
-                books: {
-                    create: books.map(item => ({
-                        bookId: item.bookId,
-                        quantity: item.quantity,
-                    })),
-                },
-            },
-            include: {
-                user: { 
-                    select: {
-                        id: true,
-                        email: true,
-                        username: true,
-                    }
-                },
-                books: {
-                    select: {
-                        quantity: true,
-                        book: {
-                            select: {
-                                id: true,
-                                title: true,
-                                price: true,
-                            }
-                        }
-                    }
+            for (const item of books) {
+                const book = booksInDb.find(book => book.id === item.bookId)!;
+                if (!book) {
+                    throw new Error(`Book not found: ${item.bookId}`);
                 }
-            },
+
+                if (book.stockQuantity < item.quantity) {
+                    throw new Error(`Insufficient stock for book: ${book.title}. Available: ${book.stockQuantity}, Requested: ${item.quantity}`);
+                }
+
+                totalPrice += book.price * item.quantity;
+                totalQuantity += item.quantity;
+
+                // Update stock quantity
+                update.push(
+                    tx.book.update({
+                        where: { id: book.id },
+                        data: { stockQuantity: { decrement: item.quantity }},
+                    })
+                );
+            }
+
+            const newTransaction = await tx.transaction.create({
+                data: {
+                    userId: userId,
+                    totalPrice: totalPrice,
+                    totalAmount: totalQuantity,
+                    books: {
+                        create: books.map((item) => ({
+                            bookId: item.bookId,
+                            quantity: item.quantity,
+                        })),
+                    },
+                },
+            });
+            await Promise.all(update);
+            
+            return {
+                transaction_id: newTransaction.id,
+                total_quantity: newTransaction.totalAmount,
+                total_price: newTransaction.totalPrice,
+            }
         });
-        await Promise.all(update);
+    } catch (error: unknown) {
+        console.error('Error creating transaction:', error);
+
+        if (error instanceof Error) {
+            if (
+                error.message.includes("User not found") ||
+                error.message.includes("Book(s) not found") ||
+                error.message.includes("Insufficient stock") ||
+                error.message.includes("Invalid input")
+            ) {
+                throw error;
+            }
+        }
+
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            if (error.code === 'P2023') {
+                throw new Error('Invalid ID format for User or Book.');
+            }
+            if (error.code === 'P2025') {
+                throw new Error(
+                    'Foreign key constraint failed: User or Book not found.'
+                );
+            }
+        }
         
-        return newTransaction;
-    });
+        throw new Error('Database error during transaction creation.');
+    }
 };
 
 /**
@@ -210,10 +278,10 @@ export const getTransactionStatistics = async () => {
         const totalTransactions = await prisma.transaction.count();
         const averageResult = await prisma.transaction.aggregate({
             _avg: {
-                total: true,
+                totalPrice: true,
             },
         });
-        const averageTransactionValue = averageResult._avg.total ?? 0;
+        const averageTransactionValue = averageResult._avg.totalPrice ?? 0;
 
         const genreCount = await prisma.book.findMany({
             where: {
@@ -255,22 +323,22 @@ export const getTransactionStatistics = async () => {
         });
 
         const salesArray = Object.values(genreSales); 
-        let mostSoldGenre: { name: string; count: number; } | null = null;
-        let leastSoldGenre: { name: string; count: number; } | null = null;
+        let mostSoldGenre: string | null = null;
+        let leastSoldGenre: string | null = null;
 
         if (salesArray.length > 0) {
             salesArray.sort((a, b) => b.count - a.count); // Sort descending by count
-            mostSoldGenre = { name: salesArray[0].name, count: salesArray[0].count };
-            leastSoldGenre = { name: salesArray[salesArray.length - 1].name, count: salesArray[salesArray.length - 1].count };
+            mostSoldGenre = salesArray[0].name;
+            leastSoldGenre = salesArray[salesArray.length - 1].name;
         }
 
         return {
-            totalTransactions,
-            averageTransactionValue,
-            mostSoldGenre,
-            leastSoldGenre,
+            total_transactions: totalTransactions,
+            average_transaction_amount: averageTransactionValue,
+            fewest_book_sales_genre: leastSoldGenre,
+            most_book_sales_genre: mostSoldGenre,
         };
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error calculating transaction statistics:', error);
         throw new Error('Database error while calculating transaction statistics.');
     }

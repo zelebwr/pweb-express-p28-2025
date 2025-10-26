@@ -66,7 +66,8 @@ model Transaction { // Renamed from Order
   user   User   @relation(fields: [userId], references: [id])
   userId String 
 
-  total  Float // Total amount for each transaction
+  totalPrice  Float   @default(0)
+  totalAmount Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -74,7 +75,7 @@ model Transaction { // Renamed from Order
   // Relationship: A transaction has many book items
   books BookOnTransaction[] // Renamed from orderItems
 
-  @@map("orders") // This still maps to your "orders" table
+  @@map("orders")
 }
 
 model BookOnTransaction { // Renamed from OrderItem

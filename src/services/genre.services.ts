@@ -16,10 +16,25 @@ export const getGenreById = async (id: string) => {
             },
         });
 
+        if (!genre) {
+            throw new Error('Genre not found');
+        }
+
         // Return the genre, or null if Prisma didn't find one
         return genre;
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error retrieving genre by ID:', error);
+
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            if (error.code === 'P2023') {
+                throw new Error('Invalid genre ID format.');
+            }
+        }
+
+        if (error instanceof Error && error.message === 'Genre not found') {
+            throw error;
+        }
+
         throw new Error('Database error while retrieving genre by ID.');
     }
 };
@@ -43,7 +58,9 @@ export const updateGenreById = async (id: string, name: string) => {
             },
         });
         return updatedGenre;   
-    } catch (error) {
+    } catch (error: unknown) {
+        console.error('Error updating genre by ID:', error);
+
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
             if (error.code === 'P2002') {
                 throw new Error('A genre with this name already exists.');
@@ -51,8 +68,11 @@ export const updateGenreById = async (id: string, name: string) => {
             if (error.code === 'P2025') {
                 throw new Error('Genre not found');
             }
+            if (error.code === 'P2023') {
+                throw new Error('Invalid genre ID format.');
+            }
         }
-        console.error('Error updating genre:', error);
+
         throw new Error('Database error while updating genre.');
     }
 };
@@ -71,16 +91,21 @@ export const deleteGenreById = async (id: string) => {
             },
         });
         return deletedGenre;
-    } catch (error) {
+    } catch (error: unknown) {
+        console.error('Error deleting genre:', error);
+        
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
             if (error.code === 'P2025') {
                 throw new Error('Genre not found');
             }
-            if (error.code === 'P2003') {
-                throw new Error('Cannot delete genre when it\' still associated with some books.');
+            // if (error.code === 'P203') {
+            //     throw new Error('Cannot delete genre when it\' still associated with some books.');
+            // }
+            if (error.code === 'P2023') {
+                throw new Error('Invalid genre ID format.');
             }
         }
-        console.error('Error deleting genre:', error);
+
         throw new Error('Database error while deleting genre.');
     }
 };
@@ -97,13 +122,15 @@ export const createGenre = async (name: string) => {
             },
         });
         return newGenre;
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error creating genre:', error);
+
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
             if (error.code === 'P2002') {
                 throw new Error('Genre with this name already exists.');
             }
         }
+
         throw new Error('Database error while creating genre.');
     }
 };
@@ -113,36 +140,47 @@ export const createGenre = async (name: string) => {
  * @author HikariReiziq (diadaptasi dari Gemini)
  */
 export const getAllGenres = async (query: any) => {
-    const { page = 1, limit = 10, search, orderByName } = query;
-    const skip = (Number(page) - 1) * Number(limit);
+    try {
+        const { page = 1, limit = 10, search, orderByName } = query;
+        const skip = (Number(page) - 1) * Number(limit);
 
-    const whereCondition: Prisma.GenreWhereInput = {
-        deletedAt: null,
-    };
-
-    if (search) {
-        whereCondition.name = {
-            contains: search,
-            mode: 'insensitive',
+        const whereCondition: Prisma.GenreWhereInput = {
+            deletedAt: null,
         };
+
+        if (search) {
+            whereCondition.name = {
+                contains: search,
+                mode: 'insensitive',
+            };
+        }
+
+        const orderByCondition: Prisma.GenreOrderByWithRelationInput[] = [];
+
+        if (orderByName) {
+            orderByCondition.push({ name: orderByName as 'asc' | 'desc' });
+        } else {
+            orderByCondition.push({ createdAt: 'desc' });
+        }
+
+        const genres = await prisma.genre.findMany({
+            where: whereCondition,
+            skip: skip,
+            take: Number(limit),
+            orderBy: orderByCondition,
+            select: {
+                id: true,
+                name: true,
+            }
+        });
+
+        const totalGenres = await prisma.genre.count({
+            where: whereCondition,
+        });
+
+        return { genres, total: totalGenres };
+    } catch (error: unknown) {
+        console.error('Error fetching genres:', error);
+        throw new Error('Failed to fetch genres');
     }
-
-    const orderByCondition: Prisma.GenreOrderByWithRelationInput[] = [];
-
-    if (orderByName) {
-        orderByCondition.push({ name: orderByName as 'asc' | 'desc' });
-    }
-
-    const genres = await prisma.genre.findMany({
-        where: whereCondition,
-        skip: skip,
-        take: Number(limit),
-        orderBy: orderByCondition,
-    });
-
-    const totalGenres = await prisma.genre.count({
-        where: whereCondition,
-    });
-
-    return { genres, total: totalGenres };
 };

@@ -2,6 +2,7 @@ import prisma from '../config/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 // Mendefinisikan tipe untuk data input pengguna baru
 type UserInput = Omit<User, 'id' | 'createdAt' | 'updatedAt'>;
@@ -14,24 +15,45 @@ type UserInput = Omit<User, 'id' | 'createdAt' | 'updatedAt'>;
 export const register = async (userData: UserInput) => {
     const { email, password, username } = userData;
 
-    // Enkripsi (hash) password sebelum disimpan untuk keamanan
-    const hashedPassword = await bcrypt.hash(password, 10);
+    if (!email || !password) {
+        throw new Error("Email and password are required for registration.");
+    }
 
-    const newUser = await prisma.user.create({
-        data: {
-            email,
-            password: hashedPassword,
-            username,
-        },
-        // Pilih hanya data yang aman untuk dikembalikan
-        select: {
-            id: true,
-            email: true,
-            username: true,
-            createdAt: true,
-        },
-    });
-    return newUser;
+    try {
+        // Enkripsi (hash) password sebelum disimpan untuk keamanan
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newUser = await prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                username,
+            },
+            // Pilih hanya data yang aman untuk dikembalikan
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                createdAt: true,
+            },
+        });
+        return newUser;
+    } catch (error: unknown) {
+        console.error("Error during user registration:", error);
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            // P2002: Unique constraint violation (email already exists)
+            if (error.code === "P2002") {
+                // Check if the target is the email field
+                if ((error.meta?.target as string[])?.includes("email")) {
+                    throw new Error(
+                        `Registration failed: Email "${email}" already exists.`
+                    );
+                }
+            }
+        }
+        // Generic fallback
+        throw new Error("Database error during user registration.");
+    }
 };
 
 /**
@@ -42,28 +64,44 @@ export const register = async (userData: UserInput) => {
 export const login = async (credentials: Pick<UserInput, 'email' | 'password'>) => {
     const { email, password } = credentials;
 
-    // Cari pengguna berdasarkan email
-    const user = await prisma.user.findUnique({
-        where: { email },
-    });
-
-    // Jika pengguna tidak ditemukan, kembalikan null
-    if (!user) {
-        return null;
+    if (!email || !password) {
+        throw new Error("Email and password are required for login.");
     }
 
-    // Bandingkan password yang diinput dengan hash di database
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-        return null; // Kembalikan null jika password salah
+    try {
+        // Cari pengguna berdasarkan email
+        const user = await prisma.user.findUnique({
+            where: { email },
+        });
+
+        // Jika pengguna tidak ditemukan, kembalikan null
+        if (!user) {
+            throw new Error('Invalid email or password');
+        }
+        
+        // Bandingkan password yang diinput dengan hash di database
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            throw new Error('Invalid email or password');
+        }
+
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+             console.error("JWT_SECRET environment variable is not set!");
+             throw new Error("Authentication configuration error."); // Don't expose details
+        }
+
+        const token = jwt.sign(
+            { id: user.id, email: user.email }, // Payload
+            jwtSecret,
+            { expiresIn: '1d' } // Token expires in 1 day
+        );
+
+        return token;
+    } catch (error: unknown) {
+        console.error("Error during user login:", error);
+
+        // Generic fallback
+        throw new Error("An error occurred during login.");
     }
-
-    // Jika kredensial valid, buat JWT
-    const token = jwt.sign(
-        { id: user.id, email: user.email }, // Data yang ingin disimpan di dalam token (payload)
-        process.env.JWT_SECRET as string,    // Kunci rahasia dari file .env
-        { expiresIn: '1d' }                  // Token akan kedaluwarsa dalam 1 hari
-    );
-
-    return token;
 };

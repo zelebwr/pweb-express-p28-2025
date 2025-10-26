@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { Prisma } from "@prisma/client";
 import * as genreService from "../services/genre.services";
 
 /**
@@ -21,17 +20,26 @@ export const handleCreateGenre = async (req: Request, res: Response) => {
             message: "Genre created successfully",
             data: newGenre,
         });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error(`[ERROR] Failed to create genre`, error);
-        if (error instanceof Error && error.message.includes("already exists")) {
-            return res.status(409).json({
+
+        if (error instanceof Error) {
+            if (error.message.includes("already exists")) {
+                return res.status(409).json({
+                    success: false,
+                    message: error.message,
+                });
+            }
+            // Other fallback errors
+            return res.status(500).json({
                 success: false,
                 message: error.message,
             });
         }
+        // Generic error
         res.status(500).json({
             success: false,
-            message: "Internal server error",
+            message: "An unknown internal server error occurred",
         });
     }
 };
@@ -58,14 +66,20 @@ export const handleGetAllGenres = async (req: Request, res: Response) => {
                 prev_page: page > 1 ? page - 1 : null,
             },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error(`[ERROR] Failed to get all genres`, error);
+
+        let errorMessage = 'Internal server error';
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        }
+
         res.status(500).json({
             success: false,
-            message: "Internal server error",
+            message: errorMessage,
         });
     }
-};
+}
 
 /**
  * * Handles HTTP Requests to get a genre by ID. (GET /genre/:genre_id)
@@ -76,30 +90,38 @@ export const getGenreDetail = async (req: Request, res: Response) => {
         const { genre_id } = req.params;
         const genre = await genreService.getGenreById(genre_id);
 
-        if (!genre) {
-            return res.status(404).json({
-                success: false,
-                message: "Genre not found",
-            });
-        }
-
         return res.status(200).json({
             success: true,
             message: "Get genre detail successfully",
             data: genre,
         });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error(
             `[ERROR] Failed to get genre detail for ID: ${req.params.genre_id}`,
             error
         );
+        if (error instanceof Error) {
+            if (error.message === 'Genre not found') {
+                return res.status(404).json({
+                    success: false,
+                    message: error.message,
+                });
+            }
+            if (error.message === 'Invalid genre ID format') {
+                return res.status(400).json({
+                    success: false,
+                    message: error.message,
+                });
+            }
+            return res.status(500).json({
+                success: false,
+                message: error.message,
+            });
+        }
+        // Generic error
         return res.status(500).json({
             success: false,
-            message: "Internal server error",
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Unknown error occurred",
+            message: 'An unknown internal server error occurred',
         });
     }
 };
@@ -126,31 +148,40 @@ export const updateGenre = async (req: Request, res: Response) => {
             message: "Genre updated successfully",
             data: updatedGenre,
         });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error(
             `[ERROR] Failed to update genre for ID: ${req.params.genre_id}`,
             error
         );
 
-        let statusCode = 500;
-        let message = "Internal server error";
-        const errorMessage =
-            error instanceof Error ? error.message : "Unknown error occurred";
-
         if (error instanceof Error) {
-            if (error.message.includes("already exists")) {
-                statusCode = 409;
-                message = error.message;
-            } else if (error.message.includes("Genre not found")) {
-                statusCode = 404;
-                message = error.message;
+            if (error.message.includes('already exists')) {
+                return res.status(409).json({ // 409 Conflict
+                    success: false,
+                    message: error.message,
+                });
             }
+            if (error.message.includes('Genre not found')) {
+                 return res.status(404).json({ // 404 Not Found
+                    success: false,
+                    message: error.message,
+                });
+            }
+            if (error.message.includes('Invalid genre ID format')) {
+                 return res.status(400).json({ // 400 Bad Request
+                    success: false,
+                    message: error.message,
+                });
+            }
+            return res.status(500).json({
+                success: false,
+                message: error.message,
+            });
         }
-
-        return res.status(statusCode).json({
+         // Generic error
+        return res.status(500).json({
             success: false,
-            message: message,
-            error: errorMessage,
+            message: 'An unknown internal server error occurred',
         });
     }
 };
@@ -181,10 +212,10 @@ export const deleteGenre = async (req: Request, res: Response) => {
 
         if (error instanceof Error) {
             if (error.message.includes("Genre not found")) {
-                statusCode = 404;
+                statusCode = 404; // 404 Not Found
                 message = error.message;
             } else if (error.message.includes("Cannot delete genre")) {
-                statusCode = 400;
+                statusCode = 400; // 400 Bad Request
                 message = error.message;
             }
         }
@@ -196,4 +227,3 @@ export const deleteGenre = async (req: Request, res: Response) => {
         });
     }
 };
-

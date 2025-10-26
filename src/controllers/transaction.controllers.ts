@@ -7,30 +7,26 @@ import * as transactionService from "../services/transaction.service";
  */
 export const getAllTransactions = async (req: Request, res: Response) => {
     try {
-        const transactions = await transactionService.getAllTransactions();
+        const result = await transactionService.getAllTransactions(req.query );
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10; 
+        
         return res.status(200).json({
             success: true,
             message: "Get all transactions successfully",
-            data: transactions,
+            data: result.transactions,
         });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error(`[ERROR] Failed to get all transactions: ${error}`);
-        const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
 
+        let errorMessage = "Internal server error";
         if (error instanceof Error) {
-            if (error.message === "No transactions found") {
-                return res.status(404).json({
-                    success: false,
-                    message: error.message,
-                });
-            }
+            errorMessage = error.message;
         }
 
         return res.status(500).json({
             success: false,
-            message: "Internal server error",
-            error: errorMessage,
+            message: errorMessage,
         });
     }
 };
@@ -46,36 +42,36 @@ export const getTransactionById = async (req: Request, res: Response) => {
             transaction_id
         );
 
-        if (!transaction) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Transaction not found" 
-            });
-        }
-
         return res.status(200).json({
             success: true,
             message: "Get transaction detail successfully", 
             data: transaction,
         });
-    } catch (error) {
-        let statusCode = 500;
-        let message = "Internal server error";
-        const errorMessage =
-            error instanceof Error
-                ? error.message
-                : "An unknown error occurred";
+    } catch (error: unknown) {
+        console.error(`[ERROR] Failed to get transaction by ID: ${error}`);
 
         if (error instanceof Error) {
             if (error.message === "Transaction not found") {
-                statusCode = 404;
-                message = error.message;
+                return res.status(404).json({
+                    success: false,
+                    message: error.message,
+                });
             }
+            if (error.message === "Invalid transaction ID format") {
+                return res.status(400).json({
+                    success: false,
+                    message: error.message,
+                });
+            }
+            return res.status(500).json({
+                success: false,
+                message: error.message,
+            });
         }
-        return res.status(statusCode).json({
+
+        return res.status(500).json({
             success: false,
-            message: message,
-            error: errorMessage,
+            message: "An unknown internal server error occurred",
         });
     }
 };
@@ -103,29 +99,44 @@ export const createTransaction = async (req: Request, res: Response) => {
         );
 
         return res.status(201).json(newTransaction);
-    } catch (error) {
+    } catch (error: unknown) {
         if (error instanceof Error) {
+            // Bad Request
             if (
                 error.message.includes("required") ||
                 error.message.includes("valid bookId") ||
                 error.message.includes("positive quantity")
             ) {
-                return res.status(400).json({ message: error.message }); // Bad Request
+                return res.status(400).json({
+                    success: false,
+                    message: error.message,
+                });
             }
+            // Not Found
             if (
                 error.message.includes("User not found") ||
                 error.message.includes("Book(s) not found")
             ) {
-                return res.status(404).json({ message: error.message }); // Not Found
+                return res.status(404).json({
+                    success: false,
+                    message: error.message,
+                });
             }
+            // Conflict (or 400 Bad Request)
             if (error.message.includes("Insufficient stock")) {
-                return res.status(409).json({ message: error.message }); // Conflict (or 400 Bad Request)
+                return res.status(409).json({
+                    success: false,
+                    message: error.message,
+                });
             }
+            // Fallback to 500 Internal Server Error
             return res.status(500).json({
                 message: "Internal server error during transaction creation",
                 error: error.message,
             });
         }
+
+        // Error when error is not an instance of Error
         return res.status(500).json({
             message: "An unknown error occurred during transaction creation",
         });
@@ -142,15 +153,17 @@ export const getTransactionStatistics = async (req: Request, res: Response) => {
     try {
         const stats = await transactionService.getTransactionStatistics();
         return res.status(200).json(stats);
-    } catch (error) {
+    } catch (error: unknown) {
+        console.error(`[ERROR] Failed to get transaction stats: ${error}`);
+
+        let errorMessage =
+            "An unknown error occurred while fetching statistics";
         if (error instanceof Error) {
-            return res.status(500).json({
-                message: "Internal server error while fetching statistics",
-                error: error.message,
-            });
+            errorMessage = error.message;
         }
+
         return res.status(500).json({
-            message: "An unknown error occurred while fetching statistics",
+            success: false,
+            message: errorMessage,
         });
-    }
-};
+    }};
