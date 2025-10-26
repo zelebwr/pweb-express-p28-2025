@@ -39,7 +39,7 @@ const isValiEmail = (email: string): string | null => {
     }
 
     if (!hasAtSgn) return "Email must contain '@' symbol and it cannot be the first character.";
-    if (!validCharsBeforeAt) return "Email contains invalid characters before '@'.";
+    if (!validCharsBeforeAt) return "Email contains characters before '@'.";
     if (!hasDot) return "Email must contain '.' after '@'.";
     if (!validCharsBetweenAtAndDot) return "Email contains invalid characters between '@' and '.'.";
     if (!validCharactersAfterDot) return "Email must have valid characters after the last '.'.";
