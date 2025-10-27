@@ -217,6 +217,9 @@ export const deleteGenre = async (req: Request, res: Response) => {
             } else if (error.message.includes("Cannot delete genre")) {
                 statusCode = 400; // 400 Bad Request
                 message = error.message;
+            } else if (error.message.includes("still associated with some books")) {
+                statusCode = 400; // 400 Bad Request
+                message = error.message;
             }
         }
 

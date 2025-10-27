@@ -22,6 +22,18 @@ export const createBook = async (bookData: CreateBookInput) => {
             "Missing required fields: title, genreId, price, and stockQuantity are required."
         );
     }
+    
+    if (bookData.price < 0 || bookData.stockQuantity < 0) {
+        throw new Error("Price and stockQuantity must be non-negative values.");
+    }
+
+    if (bookData.publicationYear > new Date().getFullYear()) {
+        throw new Error("Publication year cannot be in the future.");
+    }
+
+    if (!isNaN(bookData.stockQuantity) && bookData.stockQuantity % 1 !== 0) {
+        throw new Error("Stock quantity must be an integer.");
+    }
 
     // Ambil genreId secara terpisah, dan sisanya masukkan ke variabel 'rest'
     const { genreId, ...rest } = bookData;
@@ -158,6 +170,8 @@ export const updateBook = async (bookId: string, bookData: UpdateBookInput) => {
                 id: true,
                 title: true,
                 updatedAt: true,
+                price: true,
+                stockQuantity: true,
             }
         });
         return updatedBook;
@@ -172,7 +186,14 @@ export const updateBook = async (bookId: string, bookData: UpdateBookInput) => {
             if (error.code === 'P2023') {
                 throw new Error('Invalid book ID format');
             }
+            if (error.code === 'P2003') {
+                throw new Error('Foreign key constraint failed while updating book.');
+            }
+            if (error.code === 'P2004') {
+                throw new Error('Invalid data provided for updating book.');
+            }
         }
+        
         // Generic fallback
         throw new Error('Database error while updating book.');
     }

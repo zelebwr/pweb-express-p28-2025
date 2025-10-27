@@ -69,6 +69,26 @@ export const handleCreateBook = async (req: Request, res: Response) => {
                     message: error.message,
                 });
             }
+            if (
+                error.message.includes("non-negative values")
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: error.message,
+                });
+            }
+            if (error.message.includes("Publication year cannot be in the future")) {
+                return res.status(400).json({
+                    success: false,
+                    message: error.message,
+                });
+            }
+            if (error.message.includes("Invalid data type")) {
+                return res.status(400).json({
+                    success: false,
+                    message: error.message,
+                });
+            }
             // Fallback for other service/database errors
             return res.status(500).json({
                 success: false,

@@ -89,6 +89,9 @@ export const deleteGenreById = async (id: string) => {
             where: {
                 id: id,
             },
+            // data: {
+            //      deletedAt: new Date(),
+            // },
         });
         return deletedGenre;
     } catch (error: unknown) {
@@ -98,9 +101,9 @@ export const deleteGenreById = async (id: string) => {
             if (error.code === 'P2025') {
                 throw new Error('Genre not found');
             }
-            // if (error.code === 'P203') {
-            //     throw new Error('Cannot delete genre when it\' still associated with some books.');
-            // }
+            if (error.code === 'P2003') {
+                throw new Error('Cannot delete genre when it\' still associated with some books.');
+            }
             if (error.code === 'P2023') {
                 throw new Error('Invalid genre ID format.');
             }2
